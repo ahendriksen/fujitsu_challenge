@@ -74,6 +74,25 @@ class DnCNN(nn.Module):
 
 
 ###############################################################################
+#                          Load or create dataset(s)                          #
+###############################################################################
+def create_dataset(n, num_images):
+    """Create a dataset.
+
+    The dataset contains `num_images` n x n single-channel images. The
+    images are sampled from a Gaussian noise distribution.
+    """
+    # just generate some random noise
+    images = torch.randn(num_images + 1, 1, n, n)
+
+    # x and y contain subsequent random images.
+    x = images[:-1]
+    y = images[1:]
+    dataset = TensorDataset(x, y)
+    return dataset
+
+
+###############################################################################
 #                     Define your PyTorch-Lightning Module                    #
 ###############################################################################
 
@@ -138,27 +157,26 @@ def main():
 
     # You can add additional arguments as follows. For more information, see:
     # - https://docs.python.org/dev/library/argparse.html#module-argparse
-    parser.add_argument("--num_generations", type=int, default=512)
+    parser.add_argument("--num_images_in_dataset", type=int, default=512)
     parser.add_argument("--batch_size", default=2, type=int)
-    parser.add_argument("--simulate_game_of_life", default=False, action="store_true")
     args = parser.parse_args()
 
     ###########################################################################
     #                               Load dataset                              #
     ###########################################################################
 
-    num_generations = args.num_generations
+    num_images = args.num_images_in_dataset
     n = 512  # Image dimensions are n x n
 
-    # NOTE: Because of horovod, this code runs in each process separately. The
-    # generation of the game of life uses random number generation. In general,
-    # it is advised to be careful with random numbers in data loading code. In
-    # addition, bugs can be introduced by setting num_workers > 0 in the data
-    # loader. This is discussed in detail here:
+    # NOTE: Because of horovod, this code runs in each process separately. In
+    # this example, the dataset is generated randomly. In general, it is advised
+    # to be careful with random numbers in data loading code. In addition, bugs
+    # can be introduced by setting num_workers > 0 in the data loader. This is
+    # discussed in detail here:
     # - https://tanelp.github.io/posts/a-bug-that-plagues-thousands-of-open-source-ml-projects/
-    dataset = create_dataset(n, num_generations, args.simulate_game_of_life)
+    dataset = create_dataset(n, num_images)
     # Split into train and validation set and create data loaders:
-    train, val = random_split(dataset, [num_generations // 2, num_generations // 2])
+    train, val = random_split(dataset, [num_images // 2, num_images // 2])
     dl_train = DataLoader(
         train, num_workers=4, pin_memory=True, batch_size=args.batch_size
     )
@@ -210,72 +228,6 @@ def main():
         torchvision.io.write_png(to_uint_img(x), "input.png", compression_level=6)
         torchvision.io.write_png(to_uint_img(y), "target.png", compression_level=6)
         torchvision.io.write_png(to_uint_img(out), "output.png", compression_level=6)
-
-
-###############################################################################
-#  Appendix: Some code to create a Game of Life simulation in PyTorch         #
-###############################################################################
-
-# You probably do not need this :)
-
-
-def create_dataset(n, num_generations, simulate_game_of_life=False):
-    """Create a dataset
-
-    The dataset contains n x n single-channel images. It contains
-    `num_generations - 1` such images.
-    """
-    print("Simulating game of life: ", simulate_game_of_life)
-    if simulate_game_of_life:
-        initial = (torch.rand(1, 1, n, n) < 0.5).to(torch.int8)
-        gol_iterator = iter_game_of_life(initial, num_generations)
-        tqdm_gol_iterator = tqdm(gol_iterator, leave=False, desc="Create dataset")
-        generations = torch.cat([g for g in tqdm_gol_iterator])
-        generations = generations.to(torch.float)
-    else:
-        # just generate some random noise
-        generations = torch.randn(num_generations + 1, 1, n, n)
-
-    # x and y contain subsequent generations of the game of life.
-    # x has some noise applied to it.
-    x = generations[:-1]
-    x = x + 0.5 * torch.randn_like(x)
-    y = generations[1:]
-    dataset = TensorDataset(x, y)
-    return dataset
-
-
-def iter_game_of_life(world, num_generations):
-    # Game of life
-    # From wikipedia:
-    #
-    # These rules, which compare the behavior of the automaton to real life, can
-    # be condensed into the following:
-    # - Any live cell with two or three live neighbours survives.
-    # - Any dead cell with three live neighbours becomes a live cell.
-    # - All other live cells die in the next generation. Similarly, all
-    #   other dead cells stay dead.
-    yield world
-
-    w = torch.tensor(
-        [[1, 1, 1], [1, 0, 1], [1, 1, 1],], dtype=torch.int8, device=world.device
-    )[None, None]
-
-    for _ in range(num_generations):
-        neighbours = torch.conv2d(world, w, padding=1)
-
-        alive = world == 1
-
-        world = torch.logical_or(
-            neighbours == 3,  # three neighbours and cell is dead or alive
-            torch.logical_and(
-                alive, neighbours == 2
-            ),  # cell is alive and has two live neighbours
-        ).to(torch.int8)
-
-        yield world
-
-    return None
 
 
 ###############################################################################
