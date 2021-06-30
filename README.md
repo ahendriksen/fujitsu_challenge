@@ -39,7 +39,7 @@ pip3 install torch==1.8.1 torchvision pytorch-lightning==1.3.2 horovod==0.22.0
 
 You can run the training code on a single node as follows:
 ``` sh
-horovodrun -np 4 python test.py --batch_size 2 --max_epochs 1
+horovodrun -np 4 python template.py --batch_size 2 --max_epochs 1
 ```
 
 The `-np` argument specifies that 4 training processes are started, each using 1
@@ -53,7 +53,7 @@ code will continue to run until the validation error starts increasing.
 **Profiling** If you want to know how long each step of the script took, run 
 
 ``` sh
-horovodrun -np 4 python test.py --batch_size 2 --max_epochs 1 --profiler simple
+horovodrun -np 4 python template.py --batch_size 2 --max_epochs 1 --profiler simple
 ```
 
 This shows a report summarizing how long each step of the training procedure
@@ -85,7 +85,7 @@ ssh node2
 
 The following code runs the training process on 2 nodes using 4 GPUs each:
 ``` sh
-horovodrun -np 8 -H node2:4,node1:4 python test.py --batch_size 2 --max_epochs 1
+horovodrun -np 8 -H node2:4,node1:4 python template.py --batch_size 2 --max_epochs 1
 ```
 
 The `-np` argument specifies that a total of 8 processes have to be started. The
@@ -118,7 +118,7 @@ The horovodrun program expects that the file system layout is exactly the same
 on all nodes. If there is a difference, you might get an error like
 
 ``` sh
-[3]<stderr>:python: can't open file '/home/projects/fujitsu_challenge/test.py': [Errno 2] No such file or directory
+[3]<stderr>:python: can't open file '/home/projects/fujitsu_challenge/template.py': [Errno 2] No such file or directory
 ```
 
 In addition, it makes sense to use a shared networked file system to store your
