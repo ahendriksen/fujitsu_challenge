@@ -13,6 +13,8 @@ from torch.utils.data import DataLoader, TensorDataset, random_split
 import pytorch_lightning as pl
 import horovod.torch as hvd
 
+# Image input/output:
+import torchvision
 
 ###############################################################################
 #                           Define a neural network                           #
@@ -195,6 +197,19 @@ def main():
         new_model = Denoiser.load_from_checkpoint(
             checkpoint_path="./final_weights.ckpt"
         )
+
+        # Output of the trained network can be computed as follows.
+        x, y = train[0]
+        # compute output (adding and removing batch dimension)
+        out = new_model(x[None])[0]
+
+        def to_uint_img(img):
+            rescaled = (img - img.min()) / (img.max() - img.min())
+            return (rescaled * 255).to(torch.uint8).expand(3, -1, -1)
+
+        torchvision.io.write_png(to_uint_img(x), "input.png", compression_level=6)
+        torchvision.io.write_png(to_uint_img(y), "target.png", compression_level=6)
+        torchvision.io.write_png(to_uint_img(out), "output.png", compression_level=6)
 
 
 ###############################################################################
