@@ -7,6 +7,26 @@ This template provides installation instructions and a short well-commented
 template to get started with fast multi-node training on multiple GPUs using
 PyTorch and Horovod.
 
+## Benchmarks
+
+This template achieves near linear scaling. 
+
+The following benchmarks were run on two nodes with infiniband and GeForce RTX
+2080 Ti GPUs. We report the time to run a single epoch using (details about the
+command-line can be found below):
+
+``` sh
+horovodrun -np ${num_processes} -H node1:4,node2:4 python template.py --batch_size 2 --max_epochs 3 --profile simple
+```
+ 
+| Num processes | Time (seconds) |
+|:--------------|:---------------|
+| 1             | 45.48          |
+| 2             | 23.9           |
+| 4             | 12.1           |
+| 8             | 6.16           |
+
+
 ## Installation
 
 To run multi-node training, run these installation instructions on all nodes
